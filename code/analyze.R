@@ -4,7 +4,7 @@ library(readxl)
 library(dplyr)
 library(waffle)
 library(RColorBrewer)
-df <- read_excel('../data/thegardenproducereport14-15.xlsx',
+df <- read_excel('data/thegardenproducereport14-15.xlsx',
                  skip = 1)
 names(df) <- c('item', 'number', 'month', 'uom', 'qty', 'price', 'state')
 
@@ -156,4 +156,63 @@ dev.off()
 #####
 # WRITE CLEANED SPREADSHEET
 #####
-write.csv(df, '../data/cleaned_data.csv')
+write.csv(df, 'data/cleaned_data.csv')
+
+
+#####
+# TIME SERIES
+#####
+library(maps)
+usa <- map('state')
+states <- toupper(unique(usa$names))
+states <- sub(':MAIN', '', states)
+df$place <- ifelse(df$state == 'FLORIDA',
+                   'Florida',
+                   ifelse(df$state %in% states,
+                          'Other states',
+                          'Foreign'))
+
+# Get time series by place and month
+df$year <- as.numeric(format(df$date, '%Y'))
+df$month <- as.numeric(format(df$date, '%m'))
+temp <- df %>%
+  group_by(place, year, month) %>%
+  summarise(dollars = sum(price, na.rm = TRUE))
+
+# fake month
+temp$year_month <- paste0(temp$year, '-', temp$month)
+temp$val <- as.numeric(factor(temp$year_month))
+
+# Plot
+months <- c('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+            'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec')
+places <- unique(temp$place)
+cols <- adjustcolor(c('blue', 'orange', 'red'), alpha.f = 0.6)
+for (i in 1:length(places)){
+  sub_temp <-temp[which(temp$place == places[i]),]
+  if(i == 1){
+    plot(sub_temp$val,
+         sub_temp$dollars,
+         type = 'n',
+         ylim = c(0, 135000),
+         xaxt = 'n',
+         las = 1,
+         xlab = 'Month',
+         ylab = NA)
+    mtext(side = 2, line = 4, 'Dollars')
+    axis(side = 1,
+         at = sub_temp$val,
+         labels = months[sub_temp$month])
+  }
+  lines(sub_temp$val,
+        sub_temp$dollars,
+        col = cols[i],
+        lwd = 7)
+}
+
+legend('topleft',
+       lty = 1,
+       lwd = 5,
+       col = cols,
+       legend = places)
+title(main = 'Product place of origin by month')
