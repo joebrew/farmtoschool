@@ -156,3 +156,4 @@ dev.off()
 #####
 # WRITE CLEANED SPREADSHEET
 #####
+write.csv(df, '../data/cleaned_data.csv')
