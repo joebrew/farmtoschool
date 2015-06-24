@@ -4,6 +4,7 @@ library(readxl)
 library(dplyr)
 library(waffle)
 library(RColorBrewer)
+library(reshape2)
 df <- read_excel('data/thegardenproducereport14-15.xlsx',
                  skip = 1)
 names(df) <- c('item', 'number', 'month', 'uom', 'qty', 'price', 'state')
@@ -216,3 +217,95 @@ legend('topleft',
        col = cols,
        legend = places)
 title(main = 'Product place of origin by month')
+
+
+#####
+# FLORIDA VS OTHER
+#####
+df$place <- ifelse(df$state == 'FLORIDA',
+                   'Florida',
+                   'Non-Florida')
+
+# Get time series by place and month
+df$year <- as.numeric(format(df$date, '%Y'))
+df$month <- as.numeric(format(df$date, '%m'))
+temp <- df %>%
+  group_by(place, year, month) %>%
+  summarise(dollars = sum(price, na.rm = TRUE))
+
+# fake month
+temp$year_month <- paste0(temp$year, '-', temp$month)
+temp$val <- as.numeric(factor(temp$year_month))
+
+# Plot
+months <- c('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+            'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec')
+places <- unique(temp$place)
+cols <- adjustcolor(c('blue', 'red'), alpha.f = 0.6)
+for (i in 1:length(places)){
+  sub_temp <-temp[which(temp$place == places[i]),]
+  if(i == 1){
+    plot(sub_temp$val,
+         sub_temp$dollars,
+         type = 'n',
+         ylim = c(-5000, 200000),
+         xaxt = 'n',
+         las = 1,
+         xlab = 'Month',
+         ylab = NA)
+    mtext(side = 2, line = 4, 'Dollars')
+    axis(side = 1,
+         at = sub_temp$val,
+         labels = months[sub_temp$month])
+  }
+  lines(sub_temp$val,
+        sub_temp$dollars,
+        col = cols[i],
+        lwd = 7)
+  
+  text(x = sub_temp$val,
+       y = sub_temp$dollars,
+       col = cols[i],
+       cex = 0.6,
+       pos = ifelse(i == 2, 3, i),
+       labels = paste0('$',round(sub_temp$dollars/1000, digits = 1), 'K')
+       )
+}
+
+legend('topleft',
+       lty = 1,
+       lwd = 5,
+       col = cols,
+       legend = places)
+
+
+title(main = 'Product place of origin by month')
+
+# Barplot of the same
+bp_data <- dcast(temp, year + month ~ place, value.var = 'dollars')
+
+obj <- t(as.matrix(bp_data[,3:4]))
+bp <- barplot(obj, beside = TRUE,
+              col = cols,
+              border = NA,
+              names.arg = unique(paste0(months[temp$month], '\n', temp$year)),
+              las = 1,
+              yaxt = 'n',
+              ylim = c(0, max(obj) * 1.15))
+axis(side = 2,
+     at = seq(0, 500000, 50000),
+     labels = paste0(seq(0, 500000, 50000)/1000, 'K'),
+     las = 1)
+mtext(side = 2, 'Dollars', line = 4)
+legend('topleft',
+       fill = cols,
+       legend = places,
+       border = NA)
+title(main = 'Product place of origin by month')
+
+text(x = bp,
+     y = obj,
+     labels = paste0('$', round(obj/1000, digits = 1), 'K'),
+     pos = 3,
+     col = cols,
+     cex = 0.4)
