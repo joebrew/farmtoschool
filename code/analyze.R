@@ -5,9 +5,15 @@ library(dplyr)
 library(waffle)
 library(RColorBrewer)
 library(reshape2)
-df <- read_excel('data/thegardenproducereport14-15.xlsx',
+df2 <- read_excel('data/thegardenproducereport14-15.xlsx',
                  skip = 1)
-names(df) <- c('item', 'number', 'month', 'uom', 'qty', 'price', 'state')
+
+df <- read_excel('data/Useage615.xlsx', skip = 1)
+
+names(df) <- names(df2) <- c('item', 'number', 'month', 'uom', 'qty', 'price', 'state')
+
+# Combine
+df <- rbind(df, df2)
 
 # Get rid of grand total
 df <- df[which(is.na(df$item) | df$item != 'Grand Total'),]
@@ -24,6 +30,8 @@ for (i in 1:nrow(df)){
   }
   #print(i)
 }
+
+# Meed to fix dates!!!
 
 # Fix the funky date stuff (get rid of month headers and take previous rows)
 df$is_date <- grepl("^[[:digit:]]",df$month)
@@ -139,7 +147,8 @@ names(vec) <- simple$florida
 waffle(vec, colors = c('blue', 'grey'),
        xlab = 'Each square = $1,000',
        size = 0.3,
-       title = 'Where do our food dollars go?')
+       title = 'Where do our food dollars go?',
+       rows = 15)
 
 vec <- round(complicated$dollars/1000)
 names(vec) <- complicated$state
@@ -150,9 +159,7 @@ waffle(vec, xlab = 'Each square = $1,000',
        colors = cols,
        size = 0.3,
        title = 'Where do our food dollars go?',
-       rows = 20)
-
-dev.off()
+       rows = 10)
 
 #####
 # WRITE CLEANED SPREADSHEET
@@ -164,7 +171,7 @@ write.csv(df, 'data/cleaned_data.csv')
 # TIME SERIES
 #####
 library(maps)
-usa <- map('state')
+usa <- map('state', plot = FALSE)
 states <- toupper(unique(usa$names))
 states <- sub(':MAIN', '', states)
 df$place <- ifelse(df$state == 'FLORIDA',
@@ -195,7 +202,7 @@ for (i in 1:length(places)){
     plot(sub_temp$val,
          sub_temp$dollars,
          type = 'n',
-         ylim = c(0, 135000),
+         ylim = c(0, 160000),
          xaxt = 'n',
          las = 1,
          xlab = 'Month',
@@ -269,7 +276,7 @@ for (i in 1:length(places)){
        cex = 0.6,
        pos = ifelse(i == 2, 3, i),
        labels = paste0('$',round(sub_temp$dollars/1000, digits = 1), 'K')
-       )
+  )
 }
 
 legend('topleft',
@@ -309,3 +316,10 @@ text(x = bp,
      pos = 3,
      col = cols,
      cex = 0.4)
+
+dev.off()
+
+
+
+
+
