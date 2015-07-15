@@ -1,3 +1,49 @@
+# Multiple plot function
+#
+# ggplot objects can be passed in ..., or to plotlist (as a list of ggplot objects)
+# - cols:   Number of columns in layout
+# - layout: A matrix specifying the layout. If present, 'cols' is ignored.
+#
+# If the layout is something like matrix(c(1,2,3,3), nrow=2, byrow=TRUE),
+# then plot 1 will go in the upper left, 2 will go in the upper right, and
+# 3 will go all the way across the bottom.
+#
+multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
+  library(grid)
+  
+  # Make a list from the ... arguments and plotlist
+  plots <- c(list(...), plotlist)
+  
+  numPlots = length(plots)
+  
+  # If layout is NULL, then use 'cols' to determine layout
+  if (is.null(layout)) {
+    # Make the panel
+    # ncol: Number of columns of plots
+    # nrow: Number of rows needed, calculated from # of cols
+    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
+                     ncol = cols, nrow = ceiling(numPlots/cols))
+  }
+  
+  if (numPlots==1) {
+    print(plots[[1]])
+    
+  } else {
+    # Set up the page
+    grid.newpage()
+    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
+    
+    # Make each plot, in the correct location
+    for (i in 1:numPlots) {
+      # Get the i,j matrix positions of the regions that contain this subplot
+      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
+      
+      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
+                                      layout.pos.col = matchidx$col))
+    }
+  }
+}
+
 options(scipen=999)
 
 library(readxl)
@@ -317,6 +363,93 @@ text(x = bp,
      col = cols,
      cex = 0.4)
 
+
+#####
+# BY WEEK
+#####
+par(mfrow = c(2,1))
+df$week <- as.numeric(format(df$date, '%U'))
+df$year_week <- paste0(df$year,'-',  df$week)
+
+temp <- df %>%
+  group_by(year, week) %>%
+  summarise(florida = sum(price[place == 'Florida'], na.rm = TRUE),
+            other = sum(price[place == 'Non-Florida'], na.rm = TRUE))
+
+library(tidyr)
+temp_gathered <- gather(temp, key, dollars, florida:other)
+
+# Subset to only recent months
+temp_gathered <- temp_gathered[which(temp_gathered$year == 2015 &
+                                       temp_gathered$week >= 15),]
+
+# Label
+temp_gathered$label <- paste0(temp_gathered$year, '-', temp_gathered$week)
+
+# Relevel 
+temp_gathered$label <- factor(as.character(temp_gathered$label), 
+                                  levels = unique(sort(as.character(temp_gathered$label))))
+
+# date
+temp_gathered$first_day <- as.Date('2015-01-01') + (7 * temp_gathered$week)
+
+g <- ggplot(data = temp_gathered, aes(x = first_day, y = dollars, group = key, color = key))
+g1 <-g +   geom_line(size = 2) +
+  geom_point(size = 4) +
+  xlab('Date') +
+  ylab('Dollars') +
+  theme_bw() +
+  ggtitle('Weekly spending by source location')
+
+g <- ggplot(data = temp_gathered, aes(x = first_day, y = dollars, group = key, color = key)) 
+g2 <- g + geom_area(aes(fill = key), color = NA, position = 'stack') + 
+  xlab('Date') +
+  ylab('Dollars') +
+  theme_bw() +
+  ggtitle('Weekly spending by source location')
+#### PERCENTS
+temp_p <- temp
+temp_p$total <- temp_p$florida + temp_p$other
+temp_p$florida <- temp_p$florida / temp_p$total * 100
+temp_p$other <- temp_p$other / temp_p$total * 100
+
+temp_p_gathered <- gather(temp_p, key, dollars, florida:other)
+
+
+# Subset to only recent months
+temp_p_gathered <- temp_p_gathered[which(temp_p_gathered$year == 2015 &
+                                       temp_p_gathered$week >= 15),]
+
+# Label
+temp_p_gathered$label <- paste0(temp_p_gathered$year, '-', temp_p_gathered$week)
+
+# Relevel 
+temp_p_gathered$label <- factor(as.character(temp_p_gathered$label), 
+                              levels = unique(sort(as.character(temp_p_gathered$label))))
+
+# date
+temp_p_gathered$first_day <- as.Date('2015-01-01') + (7 * temp_p_gathered$week)
+
+g <- ggplot(data = temp_p_gathered, aes(x = first_day, y = dollars, group = key, color = key))
+g3 <- g +   geom_line(size = 2) +
+  geom_point(size = 4) +
+  xlab('Date') +
+  ylab('Percent of spending') +
+  theme_bw() +
+  ggtitle('Weekly spending by source location')
+
+
+g <- ggplot(data = temp_p_gathered, aes(x = first_day, y = dollars, group = key, color = key)) 
+g4 <- g + geom_area(aes(fill = key), color = NA, position = 'stack') + 
+  xlab('Date') +
+  ylab('Percent of spending') +
+  theme_bw() +
+  ggtitle('Weekly spending by source location')
+
+###########
+multiplot(g1, g2, g3, g4, cols = 2)
+
+par(mfrow = c(1,1))
 dev.off()
 
 
