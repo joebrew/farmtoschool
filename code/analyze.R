@@ -51,6 +51,7 @@ library(dplyr)
 library(waffle)
 library(RColorBrewer)
 library(reshape2)
+library(Hmisc)
 df2 <- read_excel('data/thegardenproducereport14-15.xlsx',
                  skip = 1)
 
@@ -114,6 +115,7 @@ df$florida <- ifelse(df$state == 'FLORIDA', 'Florida', 'Non-Florida')
 
 # Get rid of the 30 dollars with no state associated
 df <- df[which(!is.na(df$state)),]
+
 
 #####
 # WHAT PERCENTAGE OF OVERALL PRODUCE IS FLORIDA PRODUCE?
@@ -452,7 +454,55 @@ multiplot(g1, g2, g3, g4, cols = 2)
 par(mfrow = c(1,1))
 dev.off()
 
+######################################################################################
+######################################################################################
+######################################################################################
+######################################################################################
+######################################################################################
+######################################################################################
+######################################################################################
+######################################################################################
+######################################################################################
 
+#####
+# READ IN THE GOOGLE SPREADSHEET
+#####
+setwd('data')
+direct <- read.csv('Farm Produce Receiving - Sheet1.csv')
 
+# Format dates, etc.
+direct$Date <- as.Date(direct$Date, format = '%m/%d/%Y')
+
+#####
+# GET SMALL DATAFRAMES FOR BOTH DIRECT AND DISTRIBUTOR PURCHASE
+#####
+distributor_small <- df[,c('date', 'item', 'price', 'florida')]
+distributor_small$provider <- 'distributor'
+
+direct_small <- direct[,c('Date', 'General.Product', 'Total.Cost')]
+direct_small$florida <- 'Florida'
+direct_small$provider <- 'direct'
+names(direct_small) <- names(distributor_small)
+
+# Clean up item names in distributor
+temp <- strsplit(distributor_small$item, ' ')
+distributor_small$item <- sapply(temp, '[', 1)
+
+# Capitalize item names in direct
+direct_small$item <- toupper(direct_small$item)
+
+#####
+# JOIN BOTH TOGETHER
+#####
+both <- rbind(direct_small, distributor_small)
+
+# Make year, month, week columns
+both$year <- as.numeric(format(both$date, '%Y'))
+both$month <- as.numeric(format(both$date, '%m'))
+both$week  <- as.numeric(format(both$date, '%U'))
+both$year_month <- paste0(both$year, '-', both$month)
+both$year_week <- paste0(both$year, '-', both$week)
+both <- arrange(both, date)
+# write.csv(both, 'combined_for_kelli.csv', row.names = FALSE)
 
 
