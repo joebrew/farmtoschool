@@ -1,48 +1,9 @@
-# Multiple plot function
-#
-# ggplot objects can be passed in ..., or to plotlist (as a list of ggplot objects)
-# - cols:   Number of columns in layout
-# - layout: A matrix specifying the layout. If present, 'cols' is ignored.
-#
-# If the layout is something like matrix(c(1,2,3,3), nrow=2, byrow=TRUE),
-# then plot 1 will go in the upper left, 2 will go in the upper right, and
-# 3 will go all the way across the bottom.
-#
-multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
-  library(grid)
-  
-  # Make a list from the ... arguments and plotlist
-  plots <- c(list(...), plotlist)
-  
-  numPlots = length(plots)
-  
-  # If layout is NULL, then use 'cols' to determine layout
-  if (is.null(layout)) {
-    # Make the panel
-    # ncol: Number of columns of plots
-    # nrow: Number of rows needed, calculated from # of cols
-    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
-                     ncol = cols, nrow = ceiling(numPlots/cols))
-  }
-  
-  if (numPlots==1) {
-    print(plots[[1]])
-    
-  } else {
-    # Set up the page
-    grid.newpage()
-    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
-    
-    # Make each plot, in the correct location
-    for (i in 1:numPlots) {
-      # Get the i,j matrix positions of the regions that contain this subplot
-      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
-      
-      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
-                                      layout.pos.col = matchidx$col))
-    }
-  }
-}
+
+# Directory
+root <- getwd()
+
+# Helpers
+source('code/helpers.R')
 
 options(scipen=999)
 
@@ -57,10 +18,36 @@ df2 <- read_excel('data/thegardenproducereport14-15.xlsx',
 
 df <- read_excel('data/Useage615.xlsx', skip = 1)
 
-names(df) <- names(df2) <- c('item', 'number', 'month', 'uom', 'qty', 'price', 'state')
+# Add the January 2016 dump to the previous stuff (df)
+setwd('data/january_2016/')
+files <- dir()
+results_list <- list()
+for (i in 1:length(files)){
+  temp <- read_excel(files[i],
+                     skip = 1)
+  results_list[[i]] <- temp
+}
+new_data <- do.call('rbind', results_list)
+# Change names
+names(new_data) <- 
+  c('item', 'number', 'month', 'uom', 'qty', 'state')
+
+# Add a blank column for price (since we don't have it)
+new_data$price <- rep(NA, nrow(new_data))
+# Order appropriately
+new_data <- 
+  new_data[,c('item', 'number', 'month', 'uom', 'qty', 'price', 'state')]
+
+
+# BACK TO OLD DATA
+setwd(root)
+
+# Change names of old data
+names(df) <- names(df2) <- 
+  c('item', 'number', 'month', 'uom', 'qty', 'price', 'state')
 
 # Combine
-df <- rbind(df, df2)
+df <- rbind(df, df2, new_data)
 
 # Get rid of grand total
 df <- df[which(is.na(df$item) | df$item != 'Grand Total'),]
@@ -78,7 +65,7 @@ for (i in 1:nrow(df)){
   #print(i)
 }
 
-# Meed to fix dates!!!
+# Need to fix dates!!!
 
 # Fix the funky date stuff (get rid of month headers and take previous rows)
 df$is_date <- grepl("^[[:digit:]]",df$month)
@@ -109,12 +96,29 @@ df$state <- toupper(df$state)
 df$state[which(df$state == 'N/A')] <- NA
 df$state[which(df$state == 'FL (ORANGE)')] <- 'FLORIDA'
 df$state[which(df$state == 'COSATA RICA')] <- 'COSTA RICA'
+df$state[which(df$state == 'AZ')] <- 'ARIZONA'
+df$state[which(df$state == 'FL')] <- 'FLORIDA'
+df$state[which(df$state == 'MI')] <- 'MICHIGAN'
+df$state[which(df$state == 'ID')] <- 'IDAHO'
+df$state[which(df$state == 'GA')] <- 'GEORGIA'
+df$state[which(df$state == 'MX')] <- 'MEXICO'
+df$state[which(df$state == 'NC')] <- 'NORTH CAROLINA'
+df$state[which(df$state == 'NJ')] <- 'NEW JERSEY'
+df$state[which(df$state == 'PA')] <- 'PENNSYLVANIA'
+df$state[which(df$state %in% c('SC', 'S. CAROLINA'))] <- 'SOUTH CAROLINA'
+df$state[which(df$state == 'TN')] <- 'TENNESSEE'
+df$state[which(df$state == 'TX')] <- 'TEXAS'
+df$state[which(df$state == 'WA')] <- 'WASHINGTON'
+df$state[which(df$state == 'CA')] <- 'CALIFORNIA'
+df$state[which(df$state == 'CO')] <- 'COLORADO'
+
+
 
 # Give florida / non-florida column
 df$florida <- ifelse(df$state == 'FLORIDA', 'Florida', 'Non-Florida')
 
 # Get rid of the 30 dollars with no state associated
-df <- df[which(!is.na(df$state)),]
+# df <- df[which(!is.na(df$state)),]
 
 
 #####
@@ -467,6 +471,7 @@ dev.off()
 #####
 # READ IN THE GOOGLE SPREADSHEET
 #####
+setwd(root)
 setwd('data')
 direct <- read.csv('Farm Produce Receiving - Sheet1.csv')
 
