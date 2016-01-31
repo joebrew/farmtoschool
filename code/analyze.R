@@ -13,6 +13,7 @@ library(waffle)
 library(RColorBrewer)
 library(reshape2)
 library(Hmisc)
+library(readr)
 df2 <- read_excel('data/thegardenproducereport14-15.xlsx',
                  skip = 1)
 
@@ -20,24 +21,46 @@ df <- read_excel('data/Useage615.xlsx', skip = 1)
 
 # Add the January 2016 dump to the previous stuff (df)
 setwd('data/january_2016/')
-files <- dir()
-results_list <- list()
-for (i in 1:length(files)){
-  temp <- read_excel(files[i],
-                     skip = 1)
-  results_list[[i]] <- temp
-}
-new_data <- do.call('rbind', results_list)
+
+# # Old way: these files don't have price info
+# files <- dir()
+# results_list <- list()
+# for (i in 1:length(files)){
+#   temp <- read_excel(files[i],
+#                      skip = 1)
+#   results_list[[i]] <- temp
+# }
+# new_data <- do.call('rbind', results_list)
+# # Change names
+# names(new_data) <- 
+#   c('item', 'number', 'month', 'uom', 'qty', 'state')
+# 
+# # Add a blank column for price (since we don't have it)
+# new_data$price <- rep(NA, nrow(new_data))
+# # Order appropriately
+# new_data <- 
+#   new_data[,c('item', 'number', 'month', 'uom', 'qty', 'price', 'state')]
+
+# New way
+# manually combined the spreadsheet pages into one combined google doc
+new_data <- read_csv('august_november_2015_combined.csv')
+
 # Change names
 names(new_data) <- 
-  c('item', 'number', 'month', 'uom', 'qty', 'state')
+  c('item', 'number', 'month', 'uom', 'qty', 'price', 'state')
 
-# Add a blank column for price (since we don't have it)
-new_data$price <- rep(NA, nrow(new_data))
 # Order appropriately
 new_data <- 
   new_data[,c('item', 'number', 'month', 'uom', 'qty', 'price', 'state')]
 
+# Remove all the "total" rows from new data
+new_data <- new_data[!grepl('TOTAL', toupper(new_data$item)),]
+
+# Make data object
+new_data$month <- as.Date(new_data$month, '%d-%b-%y')
+
+# Get price as numeric
+new_data$price <- as.numeric(gsub('$', '', new_data$price, fixed = TRUE))
 
 # BACK TO OLD DATA
 setwd(root)
@@ -46,11 +69,19 @@ setwd(root)
 names(df) <- names(df2) <- 
   c('item', 'number', 'month', 'uom', 'qty', 'price', 'state')
 
+# Make date objects
+df$month <- as.Date(df$month, '%d-%b-%y')
+df2$month <- as.Date(df2$month, '%d-%b-%y')
+
 # Combine
 df <- rbind(df, df2, new_data)
+rm(df2, new_data, temp)
 
 # Get rid of grand total
 df <- df[which(is.na(df$item) | df$item != 'Grand Total'),]
+
+# Remove all the "total" rows period
+df <- df[!grepl('TOTAL', toupper(df$item)),]
 
 # Get right names in item / number / state (de-aggregate)
 for (i in 1:nrow(df)){
@@ -65,7 +96,6 @@ for (i in 1:nrow(df)){
   #print(i)
 }
 
-# Need to fix dates!!!
 
 # Fix the funky date stuff (get rid of month headers and take previous rows)
 df$is_date <- grepl("^[[:digit:]]",df$month)
@@ -112,13 +142,12 @@ df$state[which(df$state == 'WA')] <- 'WASHINGTON'
 df$state[which(df$state == 'CA')] <- 'CALIFORNIA'
 df$state[which(df$state == 'CO')] <- 'COLORADO'
 
-
-
 # Give florida / non-florida column
 df$florida <- ifelse(df$state == 'FLORIDA', 'Florida', 'Non-Florida')
 
+
 # Get rid of the 30 dollars with no state associated
-# df <- df[which(!is.na(df$state)),]
+df <- df[which(!is.na(df$state)),]
 
 
 #####
@@ -194,6 +223,7 @@ title(main = 'Where do our food dollars go?\n(detailed)')
 
 
 ##
+library(waffle)
 vec <- round(simple$dollars/1000)
 names(vec) <- simple$florida
 waffle(vec, colors = c('blue', 'grey'),
@@ -242,45 +272,45 @@ temp <- df %>%
 # fake month
 temp$year_month <- paste0(temp$year, '-', temp$month)
 temp$val <- as.numeric(factor(temp$year_month))
-
+# 
 # Plot
 months <- c('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
             'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec')
 places <- unique(temp$place)
 cols <- adjustcolor(c('blue', 'orange', 'red'), alpha.f = 0.6)
-for (i in 1:length(places)){
-  sub_temp <-temp[which(temp$place == places[i]),]
-  if(i == 1){
-    plot(sub_temp$val,
-         sub_temp$dollars,
-         type = 'n',
-         ylim = c(0, 160000),
-         xaxt = 'n',
-         las = 1,
-         xlab = 'Month',
-         ylab = NA)
-    mtext(side = 2, line = 4, 'Dollars')
-    axis(side = 1,
-         at = sub_temp$val,
-         labels = months[sub_temp$month])
-  }
-  lines(sub_temp$val,
-        sub_temp$dollars,
-        col = cols[i],
-        lwd = 7)
-}
-
-legend('topleft',
-       lty = 1,
-       lwd = 5,
-       col = cols,
-       legend = places)
-title(main = 'Product place of origin by month')
-
-
-#####
-# FLORIDA VS OTHER
-#####
+# for (i in 1:length(places)){
+#   sub_temp <-temp[which(temp$place == places[i]),]
+#   if(i == 1){
+#     plot(sub_temp$val,
+#          sub_temp$dollars,
+#          type = 'n',
+#          ylim = c(0, 160000),
+#          xaxt = 'n',
+#          las = 1,
+#          xlab = 'Month',
+#          ylab = NA)
+#     mtext(side = 2, line = 4, 'Dollars')
+#     axis(side = 1,
+#          at = sub_temp$val,
+#          labels = months[sub_temp$month])
+#   }
+#   lines(sub_temp$val,
+#         sub_temp$dollars,
+#         col = cols[i],
+#         lwd = 7)
+# }
+# 
+# legend('topleft',
+#        lty = 1,
+#        lwd = 5,
+#        col = cols,
+#        legend = places)
+# title(main = 'Product place of origin by month')
+# 
+# 
+# #####
+# # FLORIDA VS OTHER
+# #####
 df$place <- ifelse(df$state == 'FLORIDA',
                    'Florida',
                    'Non-Florida')
@@ -301,73 +331,73 @@ months <- c('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
             'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec')
 places <- unique(temp$place)
 cols <- adjustcolor(c('blue', 'red'), alpha.f = 0.6)
-for (i in 1:length(places)){
-  sub_temp <-temp[which(temp$place == places[i]),]
-  if(i == 1){
-    plot(sub_temp$val,
-         sub_temp$dollars,
-         type = 'n',
-         ylim = c(-5000, 200000),
-         xaxt = 'n',
-         las = 1,
-         xlab = 'Month',
-         ylab = NA)
-    mtext(side = 2, line = 4, 'Dollars')
-    axis(side = 1,
-         at = sub_temp$val,
-         labels = months[sub_temp$month])
-  }
-  lines(sub_temp$val,
-        sub_temp$dollars,
-        col = cols[i],
-        lwd = 7)
-  
-  text(x = sub_temp$val,
-       y = sub_temp$dollars,
-       col = cols[i],
-       cex = 0.6,
-       pos = ifelse(i == 2, 3, i),
-       labels = paste0('$',round(sub_temp$dollars/1000, digits = 1), 'K')
-  )
-}
-
-legend('topleft',
-       lty = 1,
-       lwd = 5,
-       col = cols,
-       legend = places)
-
-
-title(main = 'Product place of origin by month')
-
-# Barplot of the same
+# for (i in 1:length(places)){
+#   sub_temp <-temp[which(temp$place == places[i]),]
+#   if(i == 1){
+#     plot(sub_temp$val,
+#          sub_temp$dollars,
+#          type = 'n',
+#          ylim = c(-5000, 200000),
+#          xaxt = 'n',
+#          las = 1,
+#          xlab = 'Month',
+#          ylab = NA)
+#     mtext(side = 2, line = 4, 'Dollars')
+#     axis(side = 1,
+#          at = sub_temp$val,
+#          labels = months[sub_temp$month])
+#   }
+#   lines(sub_temp$val,
+#         sub_temp$dollars,
+#         col = cols[i],
+#         lwd = 7)
+#   
+#   text(x = sub_temp$val,
+#        y = sub_temp$dollars,
+#        col = cols[i],
+#        cex = 0.6,
+#        pos = ifelse(i == 2, 3, i),
+#        labels = paste0('$',round(sub_temp$dollars/1000, digits = 1), 'K')
+#   )
+# }
+# 
+# legend('topleft',
+#        lty = 1,
+#        lwd = 5,
+#        col = cols,
+#        legend = places)
+# 
+# 
+# title(main = 'Product place of origin by month')
+# 
+# # Barplot of the same
 bp_data <- dcast(temp, year + month ~ place, value.var = 'dollars')
-
+# 
 obj <- t(as.matrix(bp_data[,3:4]))
-bp <- barplot(obj, beside = TRUE,
-              col = cols,
-              border = NA,
-              names.arg = unique(paste0(months[temp$month], '\n', temp$year)),
-              las = 1,
-              yaxt = 'n',
-              ylim = c(0, max(obj) * 1.15))
-axis(side = 2,
-     at = seq(0, 500000, 50000),
-     labels = paste0(seq(0, 500000, 50000)/1000, 'K'),
-     las = 1)
-mtext(side = 2, 'Dollars', line = 4)
-legend('topleft',
-       fill = cols,
-       legend = places,
-       border = NA)
-title(main = 'Product place of origin by month')
-
-text(x = bp,
-     y = obj,
-     labels = paste0('$', round(obj/1000, digits = 1), 'K'),
-     pos = 3,
-     col = cols,
-     cex = 0.4)
+# bp <- barplot(obj, beside = TRUE,
+#               col = cols,
+#               border = NA,
+#               names.arg = unique(paste0(months[temp$month], '\n', temp$year)),
+#               las = 1,
+#               yaxt = 'n',
+#               ylim = c(0, max(obj) * 1.15))
+# axis(side = 2,
+#      at = seq(0, 500000, 50000),
+#      labels = paste0(seq(0, 500000, 50000)/1000, 'K'),
+#      las = 1)
+# mtext(side = 2, 'Dollars', line = 4)
+# legend('topleft',
+#        fill = cols,
+#        legend = places,
+#        border = NA)
+# title(main = 'Product place of origin by month')
+# 
+# text(x = bp,
+#      y = obj,
+#      labels = paste0('$', round(obj/1000, digits = 1), 'K'),
+#      pos = 3,
+#      col = cols,
+#      cex = 0.4)
 
 
 #####
@@ -375,6 +405,7 @@ text(x = bp,
 #####
 par(mfrow = c(2,1))
 df$week <- as.numeric(format(df$date, '%U'))
+df$year <- as.numeric(format(df$date, '%Y'))
 df$year_week <- paste0(df$year,'-',  df$week)
 
 temp <- df %>%
@@ -453,8 +484,13 @@ g4 <- g + geom_area(aes(fill = key), color = NA, position = 'stack') +
   ggtitle('Weekly spending by source location')
 
 ###########
-multiplot(g1, g2, g3, g4, cols = 2)
-
+# multiplot(g1, g2, g3, g4, cols = 2)
+# print(g1)
+# print(g2)
+# print(g3)
+# print(g4)
+multiplot(g1, g2, cols = 1)
+multiplot(g3, g4, cols = 1)
 par(mfrow = c(1,1))
 dev.off()
 
