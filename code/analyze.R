@@ -544,6 +544,6 @@ both$week  <- as.numeric(format(both$date, '%U'))
 both$year_month <- paste0(both$year, '-', both$month)
 both$year_week <- paste0(both$year, '-', both$week)
 both <- arrange(both, date)
-# write.csv(both, 'combined_for_kelli.csv', row.names = FALSE)
+write.csv(both, 'combined_for_kelli.csv', row.names = FALSE)
 
 
