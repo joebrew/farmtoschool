@@ -551,4 +551,26 @@ both$year_week <- paste0(both$year, '-', both$week)
 both <- arrange(both, date)
 write.csv(both, '~/Desktop/combined_for_kelli_july_2016.csv', row.names = FALSE)
 
+# If you have time, can you break the total Florida food to total and percent procured from local farms and those purchased from distributor?  
+library(zoo)
+x <- both %>%
+  filter(florida == 'Florida') %>%
+  mutate(month = as.yearmon(date)) %>%
+  group_by(month, provider) %>%
+  summarise(dollars = sum(price)) %>%
+  mutate(date = as.Date(month)) %>%
+  filter(date >= '2014-01-01',
+         date <= '2016-07-01')
 
+ggplot(data = x,
+       aes(x = date,
+           y = dollars,
+           # group = provider,
+           fill = provider)) +
+  geom_bar(stat = 'identity', position = 'dodge',
+           alpha = 0.6) +
+  xlab('Month') +
+  ylab('Dollars') +
+  ggtitle('Monthly payments to Florida providers') +
+  scale_fill_manual(name = 'Provider',
+                    values = c('darkblue', 'darkgreen'))
