@@ -44,10 +44,13 @@ setwd('data/january_2016/')
 # New way
 # manually combined the spreadsheet pages into one combined google doc
 new_data <- read_csv('august_november_2015_combined.csv')
-
+# Read in the data sent in May 2016
+newest_data <- read_excel('../Useage1215.xlsx', skip = 1)
 # Change names
-names(new_data) <- 
+names(new_data) <- names(newest_data) <- 
   c('item', 'number', 'month', 'uom', 'qty', 'price', 'state')
+# Combine
+new_data <- rbind(new_data, newest_data)
 
 # Order appropriately
 new_data <- 
@@ -509,7 +512,9 @@ dev.off()
 #####
 setwd(root)
 setwd('data')
-direct <- read.csv('Farm Produce Receiving - Sheet1.csv')
+# direct <- read.csv('Farm Produce Receiving - Sheet1.csv')
+direct <- read.csv('Farm Produce Receiving - Sheet1 May 2016.csv')
+
 
 # Format dates, etc.
 direct$Date <- as.Date(direct$Date, format = '%m/%d/%Y')
@@ -544,6 +549,6 @@ both$week  <- as.numeric(format(both$date, '%U'))
 both$year_month <- paste0(both$year, '-', both$month)
 both$year_week <- paste0(both$year, '-', both$week)
 both <- arrange(both, date)
-write.csv(both, 'combined_for_kelli.csv', row.names = FALSE)
+write.csv(both, '~/Desktop/combined_for_kelli_july_2016.csv', row.names = FALSE)
 
 
