@@ -43,7 +43,7 @@ setwd('data/january_2016/')
 
 # New way
 # manually combined the spreadsheet pages into one combined google doc
-new_data <- read_csv('august_november_2015_combined.csv')
+new_data <- read_csv('august_2015_feburary_2016_combined.csv')
 # Read in the data sent in May 2016
 newest_data <- read_excel('../Useage1215.xlsx', skip = 1)
 # Change names
