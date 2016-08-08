@@ -43,7 +43,7 @@ setwd('data/january_2016/')
 
 # New way
 # manually combined the spreadsheet pages into one combined google doc
-new_data <- read_csv('august_2015_feburary_2016_combined.csv')
+new_data <- read_csv('august_2015_july_2016_combined.csv')
 # Read in the data sent in May 2016
 newest_data <- read_excel('../Useage1215.xlsx', skip = 1)
 # Change names
@@ -151,6 +151,8 @@ df$florida <- ifelse(df$state == 'FLORIDA', 'Florida', 'Non-Florida')
 
 # Get rid of the 30 dollars with no state associated
 df <- df[which(!is.na(df$state)),]
+
+# Fix dates
 
 
 #####
@@ -420,8 +422,8 @@ library(tidyr)
 temp_gathered <- gather(temp, key, dollars, florida:other)
 
 # Subset to only recent months
-temp_gathered <- temp_gathered[which(temp_gathered$year == 2015 &
-                                       temp_gathered$week >= 15),]
+# temp_gathered <- temp_gathered[which(temp_gathered$year == 2015 &
+#                                        temp_gathered$week >= 15),]
 
 # Label
 temp_gathered$label <- paste0(temp_gathered$year, '-', temp_gathered$week)
@@ -431,11 +433,12 @@ temp_gathered$label <- factor(as.character(temp_gathered$label),
                                   levels = unique(sort(as.character(temp_gathered$label))))
 
 # date
-temp_gathered$first_day <- as.Date('2015-01-01') + (7 * temp_gathered$week)
+temp_gathered$first_day <- as.Date('2015-01-01') + (7 * temp_gathered$week) +
+  ((temp_gathered$year - 2015) * 365)
 
 g <- ggplot(data = temp_gathered, aes(x = first_day, y = dollars, group = key, color = key))
-g1 <-g +   geom_line(size = 2) +
-  geom_point(size = 4) +
+g1 <-g +   geom_line(size = 1) +
+  geom_point(size = 2) +
   xlab('Date') +
   ylab('Dollars') +
   theme_bw() +
@@ -456,9 +459,9 @@ temp_p$other <- temp_p$other / temp_p$total * 100
 temp_p_gathered <- gather(temp_p, key, dollars, florida:other)
 
 
-# Subset to only recent months
-temp_p_gathered <- temp_p_gathered[which(temp_p_gathered$year == 2015 &
-                                       temp_p_gathered$week >= 15),]
+# # Subset to only recent months
+# temp_p_gathered <- temp_p_gathered[which(temp_p_gathered$year == 2015 &
+#                                        temp_p_gathered$week >= 15),]
 
 # Label
 temp_p_gathered$label <- paste0(temp_p_gathered$year, '-', temp_p_gathered$week)
@@ -468,7 +471,8 @@ temp_p_gathered$label <- factor(as.character(temp_p_gathered$label),
                               levels = unique(sort(as.character(temp_p_gathered$label))))
 
 # date
-temp_p_gathered$first_day <- as.Date('2015-01-01') + (7 * temp_p_gathered$week)
+temp_p_gathered$first_day <- as.Date('2015-01-01') + (7 * temp_p_gathered$week) +
+  ((temp_p_gathered$year - 2015) * 365)
 
 g <- ggplot(data = temp_p_gathered, aes(x = first_day, y = dollars, group = key, color = key))
 g3 <- g +   geom_line(size = 2) +
@@ -574,3 +578,5 @@ ggplot(data = x,
   ggtitle('Monthly payments to Florida providers') +
   scale_fill_manual(name = 'Provider',
                     values = c('darkblue', 'darkgreen'))
+
+dev.off()
